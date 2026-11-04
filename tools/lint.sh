@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-contained checker of a spin repository (no burn needed), used by CI.
+# Self-contained checker of a spin repository (no burn needed), used by tools/check.sh.
 #   tools/lint.sh [--fetch] [--base DIR]
 # Checks spin.conf and the recipes in packages/ (category=extra). --fetch also downloads the remote
 # sources and verifies their sha256. --base DIR: packages/ of CleanLinux-Recipes; then every package of
