@@ -1,0 +1,19 @@
+name=dejavu-fonts
+version=2.37
+release=1
+summary="DejaVu fonts: Sans, Serif and Sans Mono with wide Unicode coverage (the spin's default fonts)"
+homepage=https://dejavu-fonts.github.io/
+license=(Bitstream-Vera LicenseRef-Public-Domain)
+category=extra
+# fontconfig's trigger rebuilds the font cache on the device
+depends=(fontconfig)
+build_type=custom
+source=(https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_${version//./_}/dejavu-fonts-ttf-$version.tar.bz2)
+sha256=(fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7)
+srcdir=dejavu-fonts-ttf-$version
+
+do_install() {
+	install -dm755 "$DESTDIR/usr/share/fonts/dejavu"
+	install -m644 ttf/*.ttf "$DESTDIR/usr/share/fonts/dejavu/"
+	install -Dm644 LICENSE "$DESTDIR/usr/share/licenses/dejavu-fonts/LICENSE"
+}

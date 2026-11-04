@@ -1,0 +1,16 @@
+name=fcft
+version=3.3.3
+release=1
+summary="fcft: a font loading and glyph rasterization library for Wayland clients (FreeType, HarfBuzz)"
+homepage=https://codeberg.org/dnkl/fcft
+license=(MIT)
+category=extra
+# grapheme shaping with HarfBuzz; shaping of whole runs needs utf8proc, not in the base
+depends=(glibc fontconfig freetype harfbuzz pixman)
+makedepends=(tllist)
+build_type=meson
+source=(fcft-$version.tar.gz::https://codeberg.org/dnkl/fcft/archive/$version.tar.gz)
+sha256=(b0c0f4a599f43723736c8565b8b84337c4195077f07f1bb8bb3252bb13a2306a)
+srcdir=fcft
+meson_args=(-Ddocs=disabled -Dgrapheme-shaping=enabled -Drun-shaping=disabled -Dsvg-backend=nanosvg
+	-Dsystem-nanosvg=disabled -Dtest-text-shaping=false -Dexamples=false)

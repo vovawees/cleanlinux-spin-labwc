@@ -1,0 +1,24 @@
+name=labwc-spin
+version=1
+release=1
+summary="Settings of the labwc spin: labwc configuration and menu, the start hint on the console"
+homepage=https://github.com/vovawees/cleanlinux-spin-labwc
+license=(MIT)
+category=extra
+depends=(labwc foot dejavu-fonts)
+build_type=custom
+source=(rc.xml menu.xml environment labwc-spin.sh)
+sha256=(
+	3cdea9d6a6b9459e2e0cd3d53b86fa343a165993485c4b44ef54c0d4623a047d 90e51ccc74d3c65485b8b33fa333bfcef4be943db5762821b9d003eee83f488d
+	5db943fd8168209f5ab963aa50c7a5856b08c0cf648d9686aadd8c859356d7a9 55c13e72a376f4184c5fcb9d2dfa33c2c6e4f25feaf5f2c6c1ff6e3f59de1394
+)
+# labwc reads /etc/xdg/labwc after ~/.config/labwc; edits of the system copies survive updates
+backup=(etc/xdg/labwc/rc.xml etc/xdg/labwc/menu.xml etc/xdg/labwc/environment)
+
+do_install() {
+	local f
+	for f in rc.xml menu.xml environment; do
+		install -Dm644 "$FILES/$f" "$DESTDIR/etc/xdg/labwc/$f"
+	done
+	install -Dm644 "$FILES/labwc-spin.sh" "$DESTDIR/etc/profile.d/labwc-spin.sh"
+}

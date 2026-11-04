@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- labwc settings of the labwc spin; ~/.config/labwc/rc.xml of a user replaces this file.
+     Every option: https://labwc.github.io/labwc-config.5.html -->
+<labwc_config>
+  <theme>
+    <font place="">
+      <name>DejaVu Sans</name>
+      <size>10</size>
+    </font>
+  </theme>
+  <keyboard>
+    <!-- the default key bindings of labwc (A-Tab, W-Return, ...) and one more -->
+    <default />
+    <keybind key="W-Return">
+      <action name="Execute" command="foot" />
+    </keybind>
+  </keyboard>
+</labwc_config>

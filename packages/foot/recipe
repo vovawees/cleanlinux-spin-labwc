@@ -1,0 +1,17 @@
+name=foot
+version=1.28.0
+release=1
+summary="foot: a fast, lightweight Wayland terminal emulator (server mode footserver/footclient)"
+homepage=https://codeberg.org/dnkl/foot
+license=(MIT)
+category=extra
+# TERM=foot: the terminfo entries come with ncurses of the base; no utmp helper, no grapheme clustering
+# (utf8proc), no man pages (scdoc)
+depends=(glibc fcft pixman wayland libxkbcommon fontconfig ncurses)
+makedepends=(tllist wayland-protocols)
+build_type=meson
+source=(foot-$version.tar.gz::https://codeberg.org/dnkl/foot/archive/$version.tar.gz)
+sha256=(4296be402b5684d049534598e69db92b918f92beac9dab76b585207045f0b037)
+srcdir=foot
+meson_args=(-Ddocs=disabled -Dthemes=true -Dime=true -Dgrapheme-clustering=disabled -Dtests=false
+	-Dterminfo=disabled -Ddefault-terminfo=foot -Dutmp-backend=none)

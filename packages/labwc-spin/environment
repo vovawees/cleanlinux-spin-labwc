@@ -1,0 +1,7 @@
+# environment of labwc and the programs it starts (labwc-config(5)); ~/.config/labwc/environment adds to it
+# keyboard layout, e.g. us,ru switched with Alt+Shift:
+#XKB_DEFAULT_LAYOUT=us,ru
+#XKB_DEFAULT_OPTIONS=grp:alt_shift_toggle
+# no GPU acceleration (virtual machines without 3D): the pixman renderer of wlroots
+#WLR_RENDERER=pixman
+XDG_CURRENT_DESKTOP=labwc:wlroots
