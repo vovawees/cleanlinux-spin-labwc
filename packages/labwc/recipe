@@ -6,16 +6,18 @@ homepage=https://labwc.github.io/
 license=(GPL-2.0-only)
 category=extra
 features=(+nls)
-# for handhelds and tablets, as in sway: the panel orientation of the kernel applies to new screens
-# (panel-orientation.patch: panels mounted sideways start upright) and a touch screen without
-# mapToOutput goes to the one built-in screen (touch-builtin-output.patch: touches follow its
-# rotation). No Xwayland, no SVG (librsvg) and icon (libsfdo) support, no man pages (scdoc)
+# for handhelds and tablets: the panel orientation of the kernel applies to new screens, as in sway
+# (panel-orientation.patch: panels mounted sideways start upright), a touch screen without
+# mapToOutput goes to the one built-in screen (touch-builtin-output.patch) and its touches are
+# turned as the screen is (touch-rotation.patch: the transform of rc.xml, wlr-randr, the panel
+# orientation, the rotation by the accelerometer). No Xwayland, no SVG (librsvg) and icon
+# (libsfdo) support, no man pages (scdoc)
 depends=(glibc wlroots wayland libxkbcommon libxml2 glib cairo pango libinput pixman libpng libdrm)
 makedepends=(wayland-protocols)
 build_type=meson
 source=(labwc-$version.tar.gz::https://github.com/labwc/labwc/archive/refs/tags/$version.tar.gz)
 sha256=(1e70a5b74f149c5b47da76063dbdf967c44b2d7b6e94d3fdf65f70fc252f65c9)
-patches=(panel-orientation.patch touch-builtin-output.patch)
+patches=(panel-orientation.patch touch-builtin-output.patch touch-rotation.patch)
 meson_args=(-Dxwayland=disabled -Dsvg=disabled -Dicon=disabled -Dman-pages=disabled -Dlabnag=enabled
 	-Dsystemd-session=disabled -Dtest=disabled -Dstatic_analyzer=disabled)
 meson_extra() { meson_feature nls; }

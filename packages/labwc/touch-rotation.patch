@@ -1,0 +1,200 @@
+--- a/include/labwc.h
++++ b/include/labwc.h
+@@ -410,6 +410,13 @@
+ void seat_output_layout_changed(struct seat *seat);
+ 
+ /*
++ * The output a touch screen is mapped to (WL_OUTPUT of udev, mapToOutput of
++ * rc.xml, the built-in screen), NULL when it spans the layout
++ */
++struct wlr_touch;
++struct wlr_output *seat_touch_output(struct wlr_touch *touch);
++
++/*
+  * Temporarily clear the pointer/keyboard focus from the client at the
+  * beginning of interactive move/resize, window switcher or menu interactions.
+  * The focus is kept cleared until seat_focus_override_end() is called or
+--- a/src/input/touch.c
++++ b/src/input/touch.c
+@@ -1,7 +1,9 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ #include "input/touch.h"
++#include <math.h>
+ #include <wayland-util.h>
+ #include <wlr/types/wlr_cursor.h>
++#include <wlr/types/wlr_output.h>
+ #include <wlr/types/wlr_scene.h>
+ #include <wlr/types/wlr_seat.h>
+ #include <wlr/types/wlr_touch.h>
+@@ -27,6 +29,53 @@
+ 	struct wl_list link; /* seat.touch_points */
+ };
+ 
++/*
++ * A touch screen reports [0, 1] coordinates of the panel as it is mounted,
++ * the output shows its picture turned by its transform (rc.xml, wlr-randr,
++ * the panel orientation): the touches are turned the same way (buffer to
++ * output coordinates, as wlr_box_transform), so that they land where the
++ * picture is, also after a rotation.
++ */
++static void
++touch_transform(struct wlr_touch *touch, double *x, double *y)
++{
++	struct wlr_output *output = seat_touch_output(touch);
++	if (!output || isnan(*x) || isnan(*y)) {
++		return;
++	}
++	double u = *x, v = *y;
++	switch (output->transform) {
++	case WL_OUTPUT_TRANSFORM_NORMAL:
++		break;
++	case WL_OUTPUT_TRANSFORM_90:
++		*x = 1.0 - v;
++		*y = u;
++		break;
++	case WL_OUTPUT_TRANSFORM_180:
++		*x = 1.0 - u;
++		*y = 1.0 - v;
++		break;
++	case WL_OUTPUT_TRANSFORM_270:
++		*x = v;
++		*y = 1.0 - u;
++		break;
++	case WL_OUTPUT_TRANSFORM_FLIPPED:
++		*x = 1.0 - u;
++		break;
++	case WL_OUTPUT_TRANSFORM_FLIPPED_90:
++		*x = v;
++		*y = u;
++		break;
++	case WL_OUTPUT_TRANSFORM_FLIPPED_180:
++		*y = 1.0 - v;
++		break;
++	case WL_OUTPUT_TRANSFORM_FLIPPED_270:
++		*x = 1.0 - v;
++		*y = 1.0 - u;
++		break;
++	}
++}
++
+ static struct wlr_surface *
+ touch_get_coords(struct seat *seat, struct wlr_touch *touch, double x, double y,
+ 		double *x_offset, double *y_offset)
+@@ -82,6 +131,8 @@
+ {
+ 	struct seat *seat = wl_container_of(listener, seat, touch_motion);
+ 	struct wlr_touch_motion_event *event = data;
++	double x = event->x, y = event->y;
++	touch_transform(event->touch, &x, &y);
+ 
+ 	idle_manager_notify_activity(seat->wlr_seat);
+ 
+@@ -95,7 +146,7 @@
+ 				/* Convert coordinates: first [0, 1] => layout */
+ 				double lx, ly;
+ 				wlr_cursor_absolute_to_layout_coords(seat->cursor,
+-					&event->touch->base, event->x, event->y, &lx, &ly);
++					&event->touch->base, x, y, &lx, &ly);
+ 
+ 				/* Apply offsets to get surface coords before reporting event */
+ 				double sx = lx - touch_point->x_offset;
+@@ -103,14 +154,14 @@
+ 
+ 				if (touch_point_count == 1) {
+ 					wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
+-						event->x, event->y);
++						x, y);
+ 				}
+ 				wlr_seat_touch_notify_motion(seat->wlr_seat, event->time_msec,
+ 					event->touch_id, sx, sy);
+ 			} else {
+ 				if (touch_point_count == 1) {
+ 					cursor_emulate_move_absolute(seat, &event->touch->base,
+-						event->x, event->y, event->time_msec);
++						x, y, event->time_msec);
+ 				}
+ 			}
+ 			return;
+@@ -131,6 +182,8 @@
+ {
+ 	struct seat *seat = wl_container_of(listener, seat, touch_down);
+ 	struct wlr_touch_down_event *event = data;
++	double x = event->x, y = event->y;
++	touch_transform(event->touch, &x, &y);
+ 
+ 	idle_manager_notify_activity(seat->wlr_seat);
+ 
+@@ -138,7 +191,7 @@
+ 	struct touch_point *touch_point = znew(*touch_point);
+ 	double x_offset = 0.0, y_offset = 0.0;
+ 	touch_point->surface = touch_get_coords(seat, event->touch,
+-			event->x, event->y, &x_offset, &y_offset);
++			x, y, &x_offset, &y_offset);
+ 	touch_point->touch_id = event->touch_id;
+ 	touch_point->x_offset = x_offset;
+ 	touch_point->y_offset = y_offset;
+@@ -157,7 +210,7 @@
+ 		/* Convert coordinates: first [0, 1] => layout */
+ 		double lx, ly;
+ 		wlr_cursor_absolute_to_layout_coords(seat->cursor,
+-			&event->touch->base, event->x, event->y, &lx, &ly);
++			&event->touch->base, x, y, &lx, &ly);
+ 
+ 		/* Apply offsets to get surface coords before reporting event */
+ 		double sx = lx - x_offset;
+@@ -175,14 +228,14 @@
+ 
+ 		if (touch_point_count == 1) {
+ 			wlr_cursor_warp_absolute(seat->cursor, &event->touch->base,
+-				event->x, event->y);
++				x, y);
+ 		}
+ 		wlr_seat_touch_notify_down(seat->wlr_seat, touch_point->surface,
+ 			event->time_msec, event->touch_id, sx, sy);
+ 	} else {
+ 		if (touch_point_count == 1) {
+ 			cursor_emulate_move_absolute(seat, &event->touch->base,
+-				event->x, event->y, event->time_msec);
++				x, y, event->time_msec);
+ 		}
+ 		cursor_emulate_button(seat, BTN_LEFT, WL_POINTER_BUTTON_STATE_PRESSED,
+ 			event->time_msec);
+--- a/src/seat.c
++++ b/src/seat.c
+@@ -526,11 +526,9 @@
+ 	return found;
+ }
+ 
+-static void
+-map_touch_to_output(struct seat *seat, struct wlr_input_device *dev)
++static char *
++touch_output_name(struct wlr_touch *touch)
+ {
+-	struct wlr_touch *touch = wlr_touch_from_input_device(dev);
+-
+ 	char *touch_config_output_name = NULL;
+ 	struct touch_config_entry *config_entry =
+ 		touch_find_config_for_device(touch->base.name);
+@@ -542,6 +540,22 @@
+ 	if (!output_name) {
+ 		output_name = builtin_output_name();
+ 	}
++	return output_name;
++}
++
++struct wlr_output *
++seat_touch_output(struct wlr_touch *touch)
++{
++	char *output_name = touch_output_name(touch);
++	return output_name ? output_by_name(output_name) : NULL;
++}
++
++static void
++map_touch_to_output(struct seat *seat, struct wlr_input_device *dev)
++{
++	struct wlr_touch *touch = wlr_touch_from_input_device(dev);
++
++	char *output_name = touch_output_name(touch);
+ 	wlr_log(WLR_INFO, "map touch to output %s", output_name ? output_name : "unknown");
+ 	map_input_to_output(seat, dev, output_name);
+ }
