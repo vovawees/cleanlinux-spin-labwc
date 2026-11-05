@@ -1,0 +1,47 @@
+name=cleanlinux-icon-theme
+version=51.0
+release=1
+_nanosvg=239e102ec2c691f2902e20ace2ed36ee4a35cfe6 # NanoSVG has no releases: a commit of 2026-07-09
+summary="CleanLinux icons and cursors: the symbolic icons of Adwaita as PNGs for GTK without librsvg, its cursors, the start icon"
+homepage=https://gitlab.gnome.org/GNOME/adwaita-icon-theme
+license=(LGPL-3.0-or-later CC-BY-SA-3.0 MIT)
+category=extra
+# GTK 3 recolours a symbolic SVG icon through librsvg; without it, it takes NAME.symbolic.png (black
+# with the icon's alpha: the text colour of the theme). svg2rgba (NanoSVG) and icons.py draw the
+# ~530 symbolic icons of Adwaita (no right-to-left ones, no emotes) at 16, 24, 32 and 48 px on the
+# build machine: its gcc and python3, no libpng; the full-colour 16 px PNGs of Adwaita (folders,
+# file types) and cleanlinux-start (the start menu of sfwbar) come along. cursors.py keeps the X
+# cursors of Adwaita at 24, 36 and 48 px (the animated ones at 24 and 48, every second frame) and
+# makes the X11 names; /usr/share/icons/default points the cursor of every program there. ~2 MB
+depends=(hicolor-icon-theme)
+build_type=custom
+source=(https://download.gnome.org/sources/adwaita-icon-theme/${version%%.*}/adwaita-icon-theme-$version.tar.xz
+	nanosvg-$_nanosvg.tar.gz::https://github.com/memononen/nanosvg/archive/$_nanosvg.tar.gz
+	svg2rgba.c icons.py cursors.py cleanlinux-start.svg)
+sha256=(
+	ba561cf3c96305a47179fa5605856ad695c9238ea07f7093aebd9ba80c4e323b
+	2bc68bdb518d7800252042e5cad50a0ab321596f0cbf49ef2a752926329063d2
+	ad6d1234d6b5d8f13f7f318291b35b42b51f0451d22172efd33a42e773f4cd2c
+	339974ea37f7eb8adb737e55afeefcf95e1bd914b2d17fc7304b22f1654e83b2
+	f46647e74c2808f359889cbfb0f3dea2fb360a4b7dd929eab8ca7e0825e931f8
+	6e9651e9a9647adae5c0b2961ceb784c8b7678400eaf1b8167a5ebf986772e03
+)
+srcdir=adwaita-icon-theme-$version
+
+do_build() {
+	# svg2rgba runs during the build: the compiler of the build machine, without the target's flags
+	gcc -O2 -I"$SRC/../nanosvg-$_nanosvg/src" -o svg2rgba "$FILES/svg2rgba.c" -lm
+	rm -rf theme
+	python3 "$FILES/icons.py" Adwaita ./svg2rgba "$FILES/cleanlinux-start.svg" theme "$JOBS"
+	python3 "$FILES/cursors.py" Adwaita/cursors theme/cursors
+}
+
+do_install() {
+	install -d "$DESTDIR/usr/share/icons"
+	cp -r theme "$DESTDIR/usr/share/icons/CleanLinux"
+	# the cursor theme of programs that name none (XCURSOR_THEME unset): libXcursor, wlroots
+	printf '%s\n' '[Icon Theme]' 'Name=Default' 'Comment=The cursors of CleanLinux' 'Inherits=CleanLinux' \
+		>default.theme
+	install -Dm644 default.theme "$DESTDIR/usr/share/icons/default/index.theme"
+	install -Dm644 -t "$DESTDIR/usr/share/licenses/$name" COPYING COPYING_CCBYSA3 COPYING_LGPL
+}

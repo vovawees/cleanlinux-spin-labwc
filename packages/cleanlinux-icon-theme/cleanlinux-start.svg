@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- the start icon of the panel: a C with a dot (CleanLinux) on a blue tile; SPDX-License-Identifier: MIT -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" ry="12" fill="url(#tile)"/>
+  <path d="M32.4 16.9 A11 11 0 1 0 32.4 31.1" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="34.6" cy="24" r="2.9" fill="#ffffff"/>
+</svg>
