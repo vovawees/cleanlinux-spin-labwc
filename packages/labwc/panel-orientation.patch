@@ -1,0 +1,26 @@
+--- a/src/output.c
++++ b/src/output.c
+@@ -528,6 +528,23 @@
+ 	wlr_log(WLR_DEBUG, "enable output %s", wlr_output->name);
+ 	wlr_output_state_set_enabled(&output->pending, true);
+ 
++#if WLR_HAS_DRM_BACKEND
++	/*
++	 * The panel orientation the kernel knows (drm_panel_orientation_quirks,
++	 * the device tree): the screens of handhelds that are mounted sideways
++	 * start upright, as in sway. rc.xml or wlr-randr can still change it.
++	 */
++	if (wlr_output_is_drm(wlr_output)) {
++		enum wl_output_transform transform =
++			wlr_drm_connector_get_panel_orientation(wlr_output);
++		if (transform != WL_OUTPUT_TRANSFORM_NORMAL) {
++			wlr_log(WLR_INFO, "output %s: panel orientation %d",
++				wlr_output->name, transform);
++			wlr_output_state_set_transform(&output->pending, transform);
++		}
++	}
++#endif
++
+ 	if (!output_test_auto(wlr_output, &output->pending,
+ 			/* is_client_request */ false)) {
+ 		wlr_log(WLR_INFO, "mode test failed for output %s",

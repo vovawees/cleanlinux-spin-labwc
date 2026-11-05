@@ -1,0 +1,51 @@
+--- a/src/seat.c
++++ b/src/seat.c
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ #include <assert.h>
+ #include <stdbool.h>
++#include <string.h>
+ #include <strings.h>
+ #include <wlr/config.h>
+ #include <wlr/types/wlr_cursor.h>
+@@ -501,6 +502,30 @@
+ 	return (struct input *)keyboard;
+ }
+ 
++/*
++ * The built-in screen (eDP, LVDS, DSI) when there is exactly one: a touch
++ * screen without mapToOutput (rc.xml) or WL_OUTPUT (udev) goes to it, as in
++ * sway, so touches follow its rotation and an external monitor does not
++ * stretch them. A handheld or tablet with a monitor attached keeps working.
++ */
++static char *
++builtin_output_name(void)
++{
++	struct output *output;
++	char *found = NULL;
++	wl_list_for_each(output, &server.outputs, link) {
++		char *name = output->wlr_output->name;
++		if (!strncmp(name, "eDP-", 4) || !strncmp(name, "LVDS-", 5)
++				|| !strncmp(name, "DSI-", 4)) {
++			if (found) {
++				return NULL;
++			}
++			found = name;
++		}
++	}
++	return found;
++}
++
+ static void
+ map_touch_to_output(struct seat *seat, struct wlr_input_device *dev)
+ {
+@@ -514,6 +539,9 @@
+ 	}
+ 
+ 	char *output_name = touch->output_name ? touch->output_name : touch_config_output_name;
++	if (!output_name) {
++		output_name = builtin_output_name();
++	}
+ 	wlr_log(WLR_INFO, "map touch to output %s", output_name ? output_name : "unknown");
+ 	map_input_to_output(seat, dev, output_name);
+ }
