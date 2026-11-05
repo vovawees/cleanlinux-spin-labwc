@@ -1,0 +1,11 @@
+name=wlr-randr
+version=0.5.0
+release=1
+summary="wlr-randr: screen modes, scale and rotation of wlroots desktops from the command line"
+homepage=https://gitlab.freedesktop.org/emersion/wlr-randr
+license=(MIT)
+category=extra
+depends=(glibc wayland)
+build_type=meson
+source=(https://gitlab.freedesktop.org/-/project/24427/uploads/f8962ddf6214513fcb3da76c05ce2ef9/wlr-randr-$version.tar.gz)
+sha256=(a64b6eb296d1c75af098fa2d229f9aaf3ceae45eeff24056930bd4bc613c6a5e)

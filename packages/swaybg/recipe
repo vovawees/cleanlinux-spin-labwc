@@ -1,0 +1,13 @@
+name=swaybg
+version=1.2.2
+release=1
+summary="swaybg: the wallpaper of wlroots desktops (an image or a colour)"
+homepage=https://github.com/swaywm/swaybg
+license=(MIT)
+category=extra
+depends=(glibc wayland cairo gdk-pixbuf)
+makedepends=(wayland-protocols)
+build_type=meson
+source=(https://github.com/swaywm/swaybg/releases/download/v$version/swaybg-$version.tar.gz)
+sha256=(a6652a0060a0bea3c3318d9d03b6dddac34f6aeca01b883eef9e58281f5202a1)
+meson_args=(-Dgdk-pixbuf=enabled -Dman-pages=disabled)

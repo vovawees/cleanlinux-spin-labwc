@@ -1,0 +1,14 @@
+name=swayidle
+version=1.9.1
+release=1
+summary="swayidle: runs commands when the desktop is idle (dim, lock, screen off) and before sleep (elogind)"
+homepage=https://github.com/swaywm/swayidle
+license=(MIT)
+category=extra
+depends=(glibc wayland elogind)
+makedepends=(wayland-protocols)
+build_type=meson
+source=(https://github.com/swaywm/swayidle/releases/download/v$version/swayidle-$version.tar.gz)
+sha256=(6e1655ecba30db14de3df1652ef9dd1db72784946fa65cb222404a87ac825d57)
+meson_args=(-Dlogind=enabled -Dlogind-provider=elogind -Dman-pages=disabled -Dzsh-completions=false
+	-Dbash-completions=false -Dfish-completions=false)

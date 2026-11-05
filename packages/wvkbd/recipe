@@ -1,0 +1,25 @@
+name=wvkbd
+version=0.21
+release=1
+summary="wvkbd: on-screen keyboards for Wayland touch screens (mobile and desktop layouts, Cyrillic, emoji)"
+homepage=https://github.com/jjsullivan5196/wvkbd
+license=(GPL-3.0-or-later MIT)
+category=extra
+# two layouts: wvkbd-mobintl (phones, handhelds) and wvkbd-deskintl (a full keyboard for tablets and
+# laptops); no man page (scdoc)
+depends=(glibc wayland libxkbcommon pango cairo)
+makedepends=(wayland)
+build_type=make
+source=(wvkbd-$version.tar.gz::https://github.com/jjsullivan5196/wvkbd/archive/refs/tags/v$version.tar.gz)
+sha256=(e0a88358cf5a76f812a766f9323a2633da1297bfb11a1e38d420689efdd26f9d)
+
+do_build() {
+	local layout
+	for layout in mobintl deskintl; do
+		make PREFIX=/usr LAYOUT=$layout DOCS=
+	done
+}
+
+do_install() {
+	install -Dm755 -t "$DESTDIR/usr/bin" wvkbd-mobintl wvkbd-deskintl
+}

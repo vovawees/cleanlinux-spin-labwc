@@ -1,0 +1,19 @@
+name=sfwbar
+_ver=1.0_beta17
+version=1.0~beta17
+release=1
+summary="sfwbar: a GTK 3 panel for wlroots desktops (start menu, taskbar, tray, sound, network, battery, notifications)"
+homepage=https://github.com/LBCrion/sfwbar
+license=(GPL-3.0-or-later)
+category=extra
+# modules: ALSA and PipeWire (volume), iwd (Wi-Fi), BlueZ, the notification centre (ncenter), the
+# network, idle and idle-inhibit, the keyboard layout (xkbregistry), the application menu. No
+# NetworkManager, PulseAudio or MPD; no man pages (rst2man)
+depends=(glibc glib gtk3 gtk-layer-shell json-c wayland libxkbcommon alsa-lib pipewire)
+makedepends=(wayland-protocols)
+build_type=meson
+source=(sfwbar-$_ver.tar.gz::https://github.com/LBCrion/sfwbar/archive/refs/tags/v$_ver.tar.gz)
+sha256=(a4915bc7dd0873c45d0d6b01b070e39a91fd16cfadf730d6a9e48db68a8cd09e)
+meson_args=(-Dbuild-docs=disabled -Dnm=disabled -Dpulse=disabled -Dmpd=disabled -Dbsdctl=disabled
+	-Dalsa=enabled -Dpipewire=enabled -Dxkb=enabled -Diwd=enabled -Dbluez=enabled -Dncenter=enabled
+	-Dnetwork=enabled -Ddbus=enabled -Didle=enabled -Didleinhibit=enabled -Dappmenu=enabled)

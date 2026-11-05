@@ -1,0 +1,13 @@
+name=wl-clipboard
+version=2.3.0
+release=1
+summary="wl-clipboard: wl-copy and wl-paste, the clipboard of Wayland from the command line"
+homepage=https://github.com/bugaevc/wl-clipboard
+license=(GPL-3.0-or-later)
+category=extra
+depends=(glibc wayland)
+makedepends=(wayland-protocols)
+build_type=meson
+source=(wl-clipboard-$version.tar.gz::https://github.com/bugaevc/wl-clipboard/archive/refs/tags/v$version.tar.gz)
+sha256=(b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402)
+meson_args=(-Dzshcompletiondir=no -Dfishcompletiondir=no)

@@ -1,0 +1,23 @@
+name=swaylock
+version=1.8.6
+release=1
+summary="swaylock: the screen locker of wlroots desktops (PAM)"
+homepage=https://github.com/swaywm/swaylock
+license=(MIT)
+category=extra
+depends=(glibc wayland libxkbcommon cairo gdk-pixbuf linux-pam)
+makedepends=(wayland-protocols)
+build_type=meson
+source=(https://github.com/swaywm/swaylock/releases/download/v$version/swaylock-$version.tar.gz swaylock.pam)
+sha256=(
+	a15154348fef852fdb224112d137c393c826478b777f63479beb15e8d3812eaf
+	46a879deb6d31db4439c20fcfb0b6aabe60b3dd7ed3bde5bf8822f1da8d29200
+)
+meson_args=(-Dpam=enabled -Dgdk-pixbuf=enabled -Dman-pages=disabled -Dzsh-completions=false
+	-Dbash-completions=false -Dfish-completions=false)
+
+post_install() {
+	# the PAM file next to the other vendor files, with the password check of system-auth
+	rm -rf "$DESTDIR/etc/pam.d"
+	install -Dm644 "$FILES/swaylock.pam" "$DESTDIR/usr/lib/pam.d/swaylock"
+}

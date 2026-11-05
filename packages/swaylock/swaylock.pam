@@ -1,0 +1,2 @@
+# swaylock: the password of the user who locked the screen
+auth include system-auth
