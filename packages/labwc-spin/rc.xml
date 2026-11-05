@@ -1,18 +1,58 @@
 <?xml version="1.0"?>
-<!-- labwc settings of the labwc spin; ~/.config/labwc/rc.xml of a user replaces this file.
-     Every option: https://labwc.github.io/labwc-config.5.html -->
+<!-- labwc settings of the labwc spin (labwc-config(5)): ~/.config/labwc/rc.xml of a user replaces
+     this file, so copy it there to change it. Every option: https://labwc.github.io/labwc-config.5.html -->
 <labwc_config>
   <theme>
+    <cornerRadius>6</cornerRadius>
     <font place="">
       <name>DejaVu Sans</name>
       <size>10</size>
     </font>
   </theme>
   <keyboard>
-    <!-- the default key bindings of labwc (A-Tab, W-Return, ...) and one more -->
+    <!-- the default key bindings of labwc (Alt+Tab, Alt+F4, Super+arrows...), then those of the spin;
+         a binding below replaces a default one of the same keys -->
     <default />
     <keybind key="W-Return">
       <action name="Execute" command="foot" />
     </keybind>
+    <keybind key="Super_L" onRelease="yes">
+      <action name="ShowMenu" menu="root-menu" />
+    </keybind>
+    <keybind key="W-l">
+      <action name="Execute" command="labwc-spin lock" />
+    </keybind>
+    <keybind key="W-k">
+      <action name="Execute" command="labwc-spin keyboard" />
+    </keybind>
+    <keybind key="W-o">
+      <action name="Execute" command="labwc-spin rotate toggle" />
+    </keybind>
+    <keybind key="Print">
+      <action name="Execute" command="labwc-spin screenshot" />
+    </keybind>
+    <keybind key="S-Print">
+      <action name="Execute" command="labwc-spin screenshot area" />
+    </keybind>
+    <!-- sound through WirePlumber (labwc's defaults call pactl of PulseAudio) -->
+    <keybind key="XF86AudioRaiseVolume">
+      <action name="Execute" command="wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+" />
+    </keybind>
+    <keybind key="XF86AudioLowerVolume">
+      <action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" />
+    </keybind>
+    <keybind key="XF86AudioMute">
+      <action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" />
+    </keybind>
+    <keybind key="XF86AudioMicMute">
+      <action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle" />
+    </keybind>
   </keyboard>
+  <libinput>
+    <!-- touchpads: tap to click (labwc's default), no pointer while typing -->
+    <device category="touchpad">
+      <tap>yes</tap>
+      <disableWhileTyping>yes</disableWhileTyping>
+    </device>
+  </libinput>
 </labwc_config>

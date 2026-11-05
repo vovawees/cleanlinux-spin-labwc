@@ -1,7 +1,18 @@
-# environment of labwc and the programs it starts (labwc-config(5)); ~/.config/labwc/environment adds to it
-# keyboard layout, e.g. us,ru switched with Alt+Shift:
+# environment of labwc and the programs it starts (labwc-config(5)); ~/.config/labwc/environment of a
+# user replaces this file. labwc-spin start sets the keyboard layout of the console (/etc/vconsole.conf)
+# before labwc runs; another one here, e.g. us,ru switched with Alt+Shift:
 #XKB_DEFAULT_LAYOUT=us,ru
 #XKB_DEFAULT_OPTIONS=grp:alt_shift_toggle
 # no GPU acceleration (virtual machines without 3D): the pixman renderer of wlroots
 #WLR_RENDERER=pixman
+# the helpers of the spin (labwc-spin --help): no automatic scale, or this scale on every screen;
+# the full on-screen keyboard; seconds of idle before the lock, or no lock; no rotation by the
+# accelerometer
+#LABWC_SPIN_SCALE=off
+#LABWC_SPIN_SCALE=1.5
+#LABWC_SPIN_KEYBOARD=wvkbd-deskintl
+#LABWC_SPIN_IDLE=600
+#LABWC_SPIN_IDLE=off
+#LABWC_SPIN_ROTATE=off
 XDG_CURRENT_DESKTOP=labwc:wlroots
+XCURSOR_SIZE=24

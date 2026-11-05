@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Screenshot
+Comment=A picture of an area of the screen: ~/Pictures and the clipboard
+Exec=labwc-spin screenshot area
+Icon=camera-photo
+Categories=Utility;Graphics;

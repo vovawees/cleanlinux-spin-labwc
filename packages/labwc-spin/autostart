@@ -1,0 +1,20 @@
+# What the labwc spin starts with labwc (labwc runs this with sh, labwc-config(5)). labwc runs the
+# first autostart it finds: ~/.config/labwc/autostart of a user replaces this one, so copy it there to
+# change the list. labwc-spin --help: the helpers.
+
+# the scale of high-DPI screens first, so the panel starts at its size
+labwc-spin scale
+# PipeWire where the login started none (root of the live system)
+labwc-spin sound
+swaybg -m fill -i /usr/share/backgrounds/cleanlinux/default.png >/dev/null 2>&1 &
+# the panel: the start menu, windows, tray, notifications, Bluetooth, network, sound, brightness,
+# battery, the keyboard layout, the clock, the session menu (sfwbar)
+labwc-spin panel &
+# the built-in screen turns with the device (an accelerometer: iio-sensor-proxy)
+labwc-spin rotate &
+# touch screens: the on-screen keyboard shows itself for text fields
+labwc-spin keyboard auto &
+# the lock after 5 minutes of idle and before suspend (not with automatic login, not live)
+labwc-spin idle &
+# the live system: the installer in a window
+labwc-spin installer &

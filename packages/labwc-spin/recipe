@@ -1,24 +1,46 @@
 name=labwc-spin
-version=1
+version=2
 release=1
-summary="Settings of the labwc spin: labwc configuration and menu, the start hint on the console"
+summary="Settings of the labwc spin: labwc, the panel, the session helpers, the wallpaper, the desktop at login"
 homepage=https://github.com/vovawees/cleanlinux-spin-labwc
 license=(MIT)
 category=extra
-depends=(labwc foot dejavu-fonts)
+# labwc-spin (/usr/bin): what the settings files cannot do: the desktop at the login on tty1 with
+# the keyboard layout of the console, the scale of high-DPI screens, the rotation by the
+# accelerometer, the on-screen keyboard, the lock, screenshots, the installer of the live system.
+# /etc/xdg: labwc (rc.xml, menu.xml, environment, autostart) and the panel (sfwbar.config); GTK:
+# the CleanLinux icons. The wallpaper is drawn during the build (python3 of the build machine)
+depends=(bash procps-ng coreutils labwc foot dejavu-fonts sfwbar swaybg swaylock swayidle grim slurp
+	wl-clipboard brightnessctl wlr-randr wvkbd iio-sensor-proxy wireplumber dbus glib cleanlinux-icon-theme
+	gdk-pixbuf-nanosvg)
 build_type=custom
-source=(rc.xml menu.xml environment labwc-spin.sh)
+source=(labwc-spin rc.xml menu.xml environment autostart sfwbar.config
+	gtk-settings.ini labwc-spin.sh labwc-spin-keyboard.desktop labwc-spin-screenshot.desktop wallpaper.py)
 sha256=(
-	3cdea9d6a6b9459e2e0cd3d53b86fa343a165993485c4b44ef54c0d4623a047d 90e51ccc74d3c65485b8b33fa333bfcef4be943db5762821b9d003eee83f488d
-	5db943fd8168209f5ab963aa50c7a5856b08c0cf648d9686aadd8c859356d7a9 55c13e72a376f4184c5fcb9d2dfa33c2c6e4f25feaf5f2c6c1ff6e3f59de1394
+	f7f1c68d782597504396367b8d4a5b085c94da3550f849ed0a8e599b9346c20f 34bc2ac8eb7ec336c2510dbfcac3be40fd89a09aeb117faa806df164fdf76230
+	7d9de7180f3ff75cb9606798de53294a52766cd1e767a2a087dcacfb3f5e8dd9 b7ff53631807aeb3668902a3f38697d9d35b06ec47083955d1046ab9fbb9736d
+	3df6044a71b853c6ffaecd5fec7c09e6048c4093a3a7a375d0942ffd4ff3171e 3f00b94721537f19c0195f77fc62d430c7e41a330a7478e240ec0353349f3c4b
+	bb466a5476eb69b8383ea2418f6612cc80830a7c84b2f4f1fc8c4eda3e5eae5b 299c87627117adc4f097747b1ed7ba6800e40a46f069417403d21e24a4d0f5d1
+	6fd6e97468e5d7066db69c9533a3cdd461497fac3ba747fedda6e1afcb9ca317 9eb5c417465c656a8ca3201a1ed5e36ed8610284e66156550a33451b134d976d
+	8a09ea7e0837f2a7f32d5944b0e70a4ff3a685cf1b52a64d05862bd57cd73878
 )
-# labwc reads /etc/xdg/labwc after ~/.config/labwc; edits of the system copies survive updates
-backup=(etc/xdg/labwc/rc.xml etc/xdg/labwc/menu.xml etc/xdg/labwc/environment)
+# labwc and sfwbar read /etc/xdg after the user's ~/.config; edits of the system copies survive updates
+backup=(etc/xdg/labwc/rc.xml etc/xdg/labwc/menu.xml etc/xdg/labwc/environment etc/xdg/labwc/autostart
+	etc/xdg/sfwbar/sfwbar.config etc/gtk-3.0/settings.ini)
+
+do_build() {
+	python3 "$FILES/wallpaper.py" cleanlinux.png 1920 1080
+}
 
 do_install() {
 	local f
-	for f in rc.xml menu.xml environment; do
+	install -Dm755 "$FILES/labwc-spin" "$DESTDIR/usr/bin/labwc-spin"
+	for f in rc.xml menu.xml environment autostart; do
 		install -Dm644 "$FILES/$f" "$DESTDIR/etc/xdg/labwc/$f"
 	done
+	install -Dm644 "$FILES/sfwbar.config" "$DESTDIR/etc/xdg/sfwbar/sfwbar.config"
+	install -Dm644 "$FILES/gtk-settings.ini" "$DESTDIR/etc/gtk-3.0/settings.ini"
 	install -Dm644 "$FILES/labwc-spin.sh" "$DESTDIR/etc/profile.d/labwc-spin.sh"
+	install -Dm644 -t "$DESTDIR/usr/share/applications" "$FILES"/labwc-spin-*.desktop
+	install -Dm644 cleanlinux.png "$DESTDIR/usr/share/backgrounds/cleanlinux/default.png"
 }

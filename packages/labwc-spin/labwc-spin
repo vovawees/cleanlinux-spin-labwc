@@ -1,0 +1,366 @@
+#!/bin/bash
+# labwc-spin: the desktop helpers of the labwc spin of CleanLinux. SPDX-License-Identifier: MIT
+#
+#   labwc-spin start                        the desktop on this text console (tty1: at the login)
+#   labwc-spin keyboard [show|hide|toggle]  the on-screen keyboard (wvkbd): Super+K, the panel
+#   labwc-spin rotate lock|unlock|toggle    the rotation lock of the built-in screen: Super+O
+#   labwc-spin screenshot [area]            a PNG in ~/Pictures and in the clipboard: Print, Shift+Print
+#   labwc-spin lock                         lock the screen (swaylock): Super+L
+#
+# The autostart of labwc (/etc/xdg/labwc/autostart) runs the rest: scale (high-DPI screens get a
+# scale), sound (PipeWire where the login started none: root of the live system), panel (sfwbar),
+# rotate (the built-in screen follows the accelerometer), keyboard auto (touch screens: the keyboard
+# shows itself for text fields), idle (the lock after 5 minutes and before suspend), installer (the
+# live system). The console login runs labwc-spin login (/etc/profile.d/labwc-spin.sh).
+#
+# Settings, in the environment of labwc (~/.config/labwc/environment, else /etc/xdg/labwc/environment):
+#   LABWC_SPIN_SCALE=off|1.5            no automatic scale | this scale on every screen
+#   LABWC_SPIN_KEYBOARD=wvkbd-deskintl  the full keyboard instead of the compact wvkbd-mobintl
+#   LABWC_SPIN_IDLE=600|off             seconds of idle before the lock (300) | no lock
+#   LABWC_SPIN_ROTATE=off               the screen does not follow the accelerometer
+# ~/.config/labwc-spin/no-autostart: the login on tty1 does not start the desktop.
+set -u
+WALLPAPER=/usr/share/backgrounds/cleanlinux/default.png
+SFWBAR_CONFIG=/etc/xdg/sfwbar/sfwbar.config
+
+say() { printf 'labwc-spin: %s\n' "$*" >&2; }
+die() { say "$*" && exit 1; }
+usage() { sed -n '2,23p' "$0" | cut -c3-; }
+have() { command -v "$1" >/dev/null 2>&1; }
+live() { [[ -d /run/cleanlinux/live ]]; }
+mine() { pgrep -u "$(id -u)" -x "$1"; }
+state_dir() {
+	local d=${XDG_RUNTIME_DIR:-/tmp/runtime-$(id -u)}/labwc-spin
+	mkdir -p "$d" && echo "$d"
+}
+notify() { # notify SUMMARY BODY: a notification of the panel (sfwbar), when there is one
+	have gdbus || return 0
+	timeout 3 gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
+		--method org.freedesktop.Notifications.Notify labwc-spin 0 "${3:-}" "$1" "$2" '[]' '{}' 4000 >/dev/null 2>&1
+}
+
+# ---- the console: login, start ----
+
+# the user who logs in by himself on tty1 (/etc/cleanlinux/autologin, cleanlinux-install --autologin)
+autologin_user() {
+	[[ -r /etc/cleanlinux/autologin ]] && sed 's/#.*//' /etc/cleanlinux/autologin | awk 'NF { print $1; exit }'
+}
+
+# the kernel's main console (the last console=, tty0: the visible VT): where the live system's
+# installer opens; root of the live system gets the desktop only there
+main_console() {
+	local act m
+	act=$(cat /sys/class/tty/console/active 2>/dev/null) || act=tty0
+	m=${act##* }
+	if [[ $m == tty0 || -z $m ]]; then m=$(cat /sys/class/tty/tty0/active 2>/dev/null) || m=tty1; fi
+	echo "${m:-tty1}"
+}
+
+autostart_ok() {
+	[[ ${LABWC_SPIN_AUTOSTART:-1} != 0 && ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/labwc-spin/no-autostart ]] || return 1
+	compgen -G '/dev/dri/card*' >/dev/null || return 1 # no screen for a compositor (a serial console)
+	if ((EUID == 0)); then
+		live && [[ $(main_console) == tty1 ]] || return 1
+	fi
+}
+
+# xkb_layout KEYMAP: the XKB layout of a console keymap of kbd (the installer's list); us: none needed
+xkb_layout() {
+	case $1 in
+	'' | us | us-*) ;;
+	ru*) echo us,ru ;;
+	ua*) echo us,ua ;;
+	by*) echo us,by ;;
+	kazakh* | kz*) echo us,kz ;;
+	gr*) echo us,gr ;;
+	uk) echo gb ;;
+	dvorak*) echo 'us(dvorak)' ;;
+	de*) echo de ;;
+	fr*) echo fr ;;
+	es*) echo es ;;
+	it*) echo it ;;
+	pt*) echo pt ;;
+	br*) echo br ;;
+	pl*) echo pl ;;
+	cz*) echo cz ;;
+	hu*) echo hu ;;
+	trq* | tr*) echo tr ;;
+	sv* | se*) echo se ;;
+	'fi'*) echo 'fi' ;;
+	no*) echo no ;;
+	dk*) echo dk ;;
+	jp*) echo jp ;;
+	esac
+}
+
+console_keymap() {
+	[[ -r /etc/vconsole.conf ]] || return 0
+	sed -n "s/^[[:space:]]*KEYMAP=[\"']\{0,1\}\([^\"' ]*\).*/\1/p" /etc/vconsole.conf | tail -n 1
+}
+
+cmd_start() {
+	local layout log s t0
+	[[ -z ${WAYLAND_DISPLAY:-} ]] || die "a Wayland desktop runs here already ($WAYLAND_DISPLAY)"
+	have labwc || die "labwc is not installed"
+	if [[ -z ${XDG_RUNTIME_DIR:-} || ! -d $XDG_RUNTIME_DIR || ! -w $XDG_RUNTIME_DIR ]]; then
+		# a login without elogind or turnstile: a private runtime directory
+		XDG_RUNTIME_DIR=/tmp/runtime-$(id -u)
+		export XDG_RUNTIME_DIR
+		if ! mkdir -p "$XDG_RUNTIME_DIR" || ! chmod 0700 "$XDG_RUNTIME_DIR"; then die "no runtime directory $XDG_RUNTIME_DIR"; fi
+	fi
+	# the keyboard layout of the console (/etc/vconsole.conf: the installer), Alt+Shift switches two
+	if [[ -z ${XKB_DEFAULT_LAYOUT:-} ]]; then
+		layout=$(xkb_layout "$(console_keymap)")
+		if [[ -n $layout ]]; then
+			export XKB_DEFAULT_LAYOUT=$layout
+			if [[ $layout == *,* && -z ${XKB_DEFAULT_OPTIONS:-} ]]; then export XKB_DEFAULT_OPTIONS=grp:alt_shift_toggle; fi
+		fi
+	fi
+	export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=labwc:wlroots
+	log=${XDG_CACHE_HOME:-$HOME/.cache}/labwc.log
+	mkdir -p "${log%/*}"
+	if [[ -f $log ]]; then mv -f "$log" "$log.old"; fi
+	t0=$SECONDS
+	run_labwc "$log" "$@"
+	s=$?
+	# a GPU without a driver of Mesa (Intel and Panfrost need LLVM, which the base does not build):
+	# wlroots finds no GLES2 renderer and stops; its software renderer (pixman) draws the desktop
+	if ((s != 0 && SECONDS - t0 < 20)) && [[ -z ${WLR_RENDERER:-} ]] && grep -qi renderer "$log"; then
+		mv -f "$log" "$log.gpu"
+		say "no renderer for this GPU (${log}.gpu): the desktop starts with the software one (WLR_RENDERER=pixman)"
+		export WLR_RENDERER=pixman
+		run_labwc "$log" "$@"
+		s=$?
+	fi
+	return "$s"
+}
+
+# run_labwc LOG [ARGS]: labwc with its output in LOG; turnstile gives every user a session bus at
+# login, root (the live system) gets one here
+run_labwc() {
+	local log=$1
+	shift
+	if [[ -z ${DBUS_SESSION_BUS_ADDRESS:-} && ! -S $XDG_RUNTIME_DIR/bus ]] && have dbus-run-session; then
+		dbus-run-session -- labwc "$@" >"$log" 2>&1
+	else
+		labwc "$@" >"$log" 2>&1
+	fi
+}
+
+# login: what the console login runs. 100: the desktop ended normally, the login ends with it (the
+# getty logs the user in again with autologin: the desktop restarts); otherwise the shell goes on
+cmd_login() {
+	local tty s
+	tty=$(tty 2>/dev/null) || return 0
+	if [[ $tty == /dev/tty1 ]] && autostart_ok; then
+		cmd_start "$@"
+		s=$?
+		if ((s == 0)); then
+			live || return 100
+			return 0
+		fi
+		say "the desktop ended with an error ($s), its log: ${XDG_CACHE_HOME:-$HOME/.cache}/labwc.log"
+		say "labwc-spin start: start it again"
+		return 0
+	fi
+	echo "labwc: 'labwc-spin start' starts the desktop (Super+Return: a terminal, a right click: the menu)"
+}
+
+# ---- in the desktop ----
+
+# scale: high-DPI screens get a scale in steps of 0.25 from their size (the EDID): 140 dpi at scale 1
+# for built-in ones (eDP, LVDS, DSI: laptops, handhelds), 110 for monitors; at least 600 logical pixels
+# on the short side. Screens with a scale already, or without a size, are left as they are.
+cmd_scale() {
+	local want=${LABWC_SPIN_SCALE:-auto} name scale
+	[[ $want != off ]] || return 0
+	[[ $want == auto || $want =~ ^[0-9]+([.][0-9]+)?$ ]] || die "LABWC_SPIN_SCALE=$want: off, auto or a number"
+	have wlr-randr || return 0
+	while read -r name scale; do
+		wlr-randr --output "$name" --scale "$scale" || say "$name: the scale $scale did not apply"
+	done < <(wlr-randr | awk -v want="$want" '
+		function flush(  w, h, m, din, dpi, s, short) {
+			if (name == "" || !enabled || cur == "") return
+			split(cur, m, "x"); w = m[1] + 0; h = m[2] + 0
+			if (want != "auto") s = want + 0
+			else {
+				if (pw <= 0 || ph <= 0 || scale != 1) return
+				din = sqrt(pw * pw + ph * ph) / 25.4
+				if (din < 3 || din > 100) return
+				dpi = sqrt(w * w + h * h) / din
+				s = int(dpi / (name ~ /^(eDP|LVDS|DSI)-/ ? 140 : 110) * 4 + 0.5) / 4
+				short = w < h ? w : h
+				while (s > 1 && short / s < 600) s -= 0.25
+				if (s < 1) s = 1
+				if (s > 3) s = 3
+			}
+			if (s != scale) print name, s
+		}
+		/^[^ ]/ { flush(); name = $1; enabled = 0; cur = ""; pw = ph = 0; scale = 1; next }
+		/^  Physical size:/ { split($3, p, "x"); pw = p[1] + 0; ph = p[2] + 0 }
+		/^  Enabled: yes/ { enabled = 1 }
+		/^    [0-9]+x[0-9]+ px,.*current/ { cur = $1 }
+		/^  Scale:/ { scale = $2 + 0 }
+		END { flush() }')
+}
+
+# sound: turnstile starts PipeWire for users at login, not for root (the live system)
+cmd_sound() {
+	local p
+	((EUID == 0)) || return 0
+	for p in pipewire wireplumber pipewire-pulse; do
+		have "$p" || continue
+		mine "$p" >/dev/null && continue
+		"$p" >/dev/null 2>&1 &
+		if [[ $p == pipewire ]]; then sleep 1; fi
+	done
+}
+
+cmd_panel() {
+	have sfwbar || die "sfwbar is not installed"
+	if [[ -r ${XDG_CONFIG_HOME:-$HOME/.config}/sfwbar/sfwbar.config ]]; then exec sfwbar; fi
+	exec sfwbar -f "$SFWBAR_CONFIG"
+}
+
+# the one built-in screen (eDP, LVDS, DSI) and its transform
+builtin_output() { wlr-randr | awk '/^(eDP|LVDS|DSI)-[^ ]* / { n++; name = $1 } END { if (n != 1) exit 1; print name }'; }
+output_transform() { wlr-randr | awk -v o="$1" '/^[^ ]/ { cur = $1 } cur == o && /^  Transform:/ { print $2 }'; }
+
+rotate_apply() { # the transform of the state file: the screen's own (panel orientation) + the accelerometer's
+	local out base o a t
+	read -r out base o <"$1/rotation" 2>/dev/null || return 0
+	case $o in normal) a=0 ;; left-up) a=90 ;; bottom-up) a=180 ;; right-up) a=270 ;; *) return 0 ;; esac
+	t=$(((base + a) % 360))
+	if ((t == 0)); then t=normal; fi
+	wlr-randr --output "$out" --transform "$t"
+}
+
+# rotate: the built-in screen follows the accelerometer (iio-sensor-proxy) from the transform it
+# started with (the panel orientation of handhelds); lock, unlock, toggle: the rotation lock
+cmd_rotate() {
+	local d line o out base sensor alive=${LABWC_PID:-}
+	d=$(state_dir) || return 1
+	case ${1:-follow} in
+	follow) ;;
+	lock) touch "$d/rotation-lock" && notify "Rotation locked" "The screen keeps its orientation" rotation-locked-symbolic && return ;;
+	unlock)
+		rm -f "$d/rotation-lock"
+		notify "Rotation unlocked" "The screen turns with the device" rotation-allowed-symbolic
+		rotate_apply "$d"
+		return
+		;;
+	toggle) if [[ -e $d/rotation-lock ]]; then cmd_rotate unlock; else cmd_rotate lock; fi && return ;;
+	*) die "rotate: lock, unlock or toggle" ;;
+	esac
+	[[ ${LABWC_SPIN_ROTATE:-on} != off ]] && have monitor-sensor && have wlr-randr || return 0
+	out=$(builtin_output) || return 0
+	base=$(output_transform "$out")
+	case $base in normal) base=0 ;; 90 | 180 | 270) ;; *) return 0 ;; esac # a flipped screen: left alone
+	exec 3< <(exec monitor-sensor --accel 2>/dev/null)
+	sensor=$!
+	while :; do
+		if read -r -t 10 line <&3; then
+			case $line in
+			'=== No accelerometer'*) break ;;
+			'=== Has accelerometer (orientation: '*) o=${line#*orientation: } && o=${o%%[,)]*} ;;
+			'Accelerometer orientation changed: '*) o=${line#*changed: } ;;
+			*) continue ;;
+			esac
+			echo "$out $base $o" >"$d/rotation"
+			if [[ ! -e $d/rotation-lock ]]; then rotate_apply "$d"; fi
+		else
+			(($? > 128)) || break # monitor-sensor ended
+		fi
+		# labwc ended: so does this
+		[[ -z $alive ]] || kill -0 "$alive" 2>/dev/null || break
+	done
+	kill "$sensor" 2>/dev/null
+	exec 3<&-
+}
+
+has_touchscreen() { grep -qs '^E:ID_INPUT_TOUCHSCREEN=1' /run/udev/data/c13:* 2>/dev/null; }
+
+# keyboard: wvkbd, started on the first use; auto (the autostart): on a touch screen it starts hidden
+# and shows itself while a text field has the focus (input-method protocol)
+cmd_keyboard() {
+	local kb=${LABWC_SPIN_KEYBOARD:-wvkbd-mobintl} sig pids
+	local -a args=()
+	have "$kb" || die "no on-screen keyboard $kb"
+	case ${XKB_DEFAULT_LAYOUT:-} in
+	*ru* | *ua* | *by* | *kz*) args=(-l full,cyrillic,special --landscape-layers landscape,cyrillic,landscapespecial) ;;
+	esac
+	case ${1:-toggle} in
+	auto)
+		has_touchscreen && ! mine "$kb" >/dev/null || return 0
+		exec "$kb" --hidden --auto "${args[@]}"
+		;;
+	show) sig=USR2 ;;
+	hide) sig=USR1 ;;
+	toggle) sig=RTMIN ;;
+	*) die "keyboard: show, hide or toggle" ;;
+	esac
+	pids=$(mine "$kb" | tr '\n' ' ')
+	if [[ -z $pids ]]; then
+		[[ $sig != USR1 ]] || return 0
+		"$kb" "${args[@]}" >/dev/null 2>&1 &
+		disown
+		return 0
+	fi
+	# shellcheck disable=SC2086 # the PIDs: words
+	kill -s "$sig" $pids
+}
+
+cmd_lock() {
+	mine swaylock >/dev/null && return 0
+	if [[ -r $WALLPAPER ]]; then exec swaylock -f -s fill -i "$WALLPAPER"; fi
+	exec swaylock -f -c 0b1220
+}
+
+# idle: the lock after LABWC_SPIN_IDLE seconds, before suspend and on loginctl lock-session; not where
+# nobody can type a password: the live system (root has none) and the user of the automatic login
+# (handhelds: no keyboard)
+cmd_idle() {
+	local t=${LABWC_SPIN_IDLE:-300}
+	[[ $t != off ]] || return 0
+	[[ $t =~ ^[0-9]+$ ]] || die "LABWC_SPIN_IDLE=$t: seconds or off"
+	have swayidle && ! live || return 0
+	[[ $(autologin_user) != "$(id -un)" ]] || return 0
+	exec swayidle -w timeout "$t" 'labwc-spin lock' before-sleep 'labwc-spin lock' lock 'labwc-spin lock'
+}
+
+cmd_screenshot() {
+	local dir=${XDG_PICTURES_DIR:-$HOME/Pictures} f g
+	local -a geom=()
+	case ${1:-screen} in
+	screen) ;;
+	area) g=$(slurp) || return 0 && geom=(-g "$g") ;;
+	*) die "screenshot: screen or area" ;;
+	esac
+	mkdir -p "$dir" || die "no directory $dir"
+	f=$dir/screenshot-$(date +%Y%m%d-%H%M%S).png
+	grim "${geom[@]}" "$f" || die "grim failed"
+	if have wl-copy; then wl-copy --type image/png <"$f"; fi
+	notify "Screenshot" "$f (also in the clipboard)" camera-photo-symbolic
+}
+
+# installer: the live system's installer in a terminal, at the start of the desktop (unless it was
+# quit once) and from the menu of applications (--open)
+cmd_installer() {
+	local apps
+	live && ((EUID == 0)) && have cleanlinux-setup && have foot || return 0
+	apps=${XDG_DATA_HOME:-$HOME/.local/share}/applications
+	mkdir -p "$apps"
+	printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Install CleanLinux' \
+		'Comment=Install CleanLinux on this computer' 'Exec=labwc-spin installer --open' \
+		'Icon=system-software-install' 'Categories=System;' >"$apps/cleanlinux-setup.desktop"
+	[[ ${1:-} == --open || ! -e /run/cleanlinux-setup.exit ]] || return 0
+	exec foot -T "Install CleanLinux" -W 100x30 cleanlinux-setup
+}
+
+case ${1:-} in
+start | login | scale | sound | panel | rotate | keyboard | lock | idle | screenshot | installer)
+	c=$1 && shift && "cmd_$c" "$@"
+	;;
+-h | --help) usage ;;
+*) usage >&2 && exit 2 ;;
+esac

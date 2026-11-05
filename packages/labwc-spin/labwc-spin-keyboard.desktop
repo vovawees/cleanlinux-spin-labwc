@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=On-screen keyboard
+Comment=Show or hide the keyboard of the touch screen
+Exec=labwc-spin keyboard
+Icon=input-keyboard
+Categories=Utility;Accessibility;
