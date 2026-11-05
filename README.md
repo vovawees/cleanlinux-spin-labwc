@@ -53,7 +53,7 @@ flowchart LR
 - **Пользователь на tty1** — рабочий стол стартует при входе; «Выйти» завершает вход, автоматический вход
   тут же запускает стол снова. Консоль — Ctrl+Alt+F2. На других консолях — подсказка `labwc-spin start`.
 - **Живая система** (пункт загрузки «CleanLinux live (labwc)») — root входит сам, стол стартует на основной
-  консоли, установщик открывается в окне (и в меню приложений — «Install CleanLinux»). С пунктом «serial console»
+  консоли, установщик открывается в развёрнутом окне (и в меню приложений — «Install CleanLinux»). С пунктом «serial console»
   стол не стартует: установщик — на последовательной консоли.
 - **labwc не запустился** — журнал `~/.cache/labwc.log`, оболочка остаётся; `labwc-spin start` — ещё раз.
 
@@ -156,7 +156,7 @@ A labwc spin of CleanLinux: labwc with the sfwbar panel (app menu, taskbar, tray
 Bluetooth, network, sound, brightness, battery, layout, clock, session), the wvkbd on-screen keyboard
 (shown for text fields on touch screens), rotation by the accelerometer, DPI scaling, swaylock/swayidle,
 screenshots and the clipboard. The desktop starts at the login on tty1 (with automatic login on handhelds:
-right after boot); the live image starts it on its main console with the installer in a window. Settings:
+right after boot); the live image starts it on its main console with the installer in a maximized window. Settings:
 `/etc/xdg/labwc`, `/etc/xdg/sfwbar/sfwbar.config`, `LABWC_SPIN_*` in labwc's `environment`;
 `labwc-spin --help`. GPUs without a Mesa driver in the images (Intel, Panfrost: Mesa needs LLVM for them)
 fall back to the pixman renderer.

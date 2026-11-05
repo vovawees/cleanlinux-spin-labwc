@@ -1,6 +1,6 @@
 name=labwc-spin
 version=2
-release=1
+release=2
 summary="Settings of the labwc spin: labwc, the panel, the session helpers, the wallpaper, the desktop at login"
 homepage=https://github.com/vovawees/cleanlinux-spin-labwc
 license=(MIT)
@@ -17,7 +17,7 @@ build_type=custom
 source=(labwc-spin rc.xml menu.xml environment autostart sfwbar.config
 	gtk-settings.ini labwc-spin.sh labwc-spin-keyboard.desktop labwc-spin-screenshot.desktop wallpaper.py)
 sha256=(
-	f7f1c68d782597504396367b8d4a5b085c94da3550f849ed0a8e599b9346c20f 34bc2ac8eb7ec336c2510dbfcac3be40fd89a09aeb117faa806df164fdf76230
+	31acdcdb089fba43336a8f984bc062bc835ab79378fe1894d7467cb9a6e06fd0 34bc2ac8eb7ec336c2510dbfcac3be40fd89a09aeb117faa806df164fdf76230
 	7d9de7180f3ff75cb9606798de53294a52766cd1e767a2a087dcacfb3f5e8dd9 b7ff53631807aeb3668902a3f38697d9d35b06ec47083955d1046ab9fbb9736d
 	3df6044a71b853c6ffaecd5fec7c09e6048c4093a3a7a375d0942ffd4ff3171e 3f00b94721537f19c0195f77fc62d430c7e41a330a7478e240ec0353349f3c4b
 	bb466a5476eb69b8383ea2418f6612cc80830a7c84b2f4f1fc8c4eda3e5eae5b 299c87627117adc4f097747b1ed7ba6800e40a46f069417403d21e24a4d0f5d1

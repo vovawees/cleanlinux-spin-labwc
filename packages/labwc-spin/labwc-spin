@@ -343,8 +343,9 @@ cmd_screenshot() {
 	notify "Screenshot" "$f (also in the clipboard)" camera-photo-symbolic
 }
 
-# installer: the live system's installer in a terminal, at the start of the desktop (unless it was
-# quit once) and from the menu of applications (--open)
+# installer: the live system's installer in a maximized terminal (it fits the small screens of
+# handhelds and follows the rotation), at the start of the desktop (unless it was quit once) and from
+# the menu of applications (--open)
 cmd_installer() {
 	local apps
 	live && ((EUID == 0)) && have cleanlinux-setup && have foot || return 0
@@ -354,7 +355,7 @@ cmd_installer() {
 		'Comment=Install CleanLinux on this computer' 'Exec=labwc-spin installer --open' \
 		'Icon=system-software-install' 'Categories=System;' >"$apps/cleanlinux-setup.desktop"
 	[[ ${1:-} == --open || ! -e /run/cleanlinux-setup.exit ]] || return 0
-	exec foot -T "Install CleanLinux" -W 100x30 cleanlinux-setup
+	exec foot -T "Install CleanLinux" --maximized cleanlinux-setup
 }
 
 case ${1:-} in
